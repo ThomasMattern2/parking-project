@@ -1,21 +1,15 @@
 package edu.ucalgary.oop;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.*;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.stream.Collectors;
+import java.util.*;
 
 public class VisitorParking {
 
     private HashMap<String, TreeSet<LocalDate>> parkingRecord;
     private HashMap<LocalDate, Integer> reservationCountPerDate = new HashMap<>();
+    private HashMap<String, TreeSet<LocalDate>> startDays = new HashMap<>();
+
 
     public VisitorParking() {
         this.parkingRecord = new HashMap<>();
@@ -88,8 +82,18 @@ public class VisitorParking {
             LocalDate currentDate = date.plusDays(i);
             reservationCountPerDate.put(currentDate, reservationCountPerDate.getOrDefault(currentDate, 0) + 1);
         }
+
+        // Update the startDays HashMap
+        startDays.putIfAbsent(standardizedLicense, new TreeSet<>());
+        startDays.get(standardizedLicense).add(date);
+        System.out.println("Start Days:"); 
+        for (String license1 : this.startDays.keySet()) {
+            TreeSet<LocalDate> startDates = this.startDays.get(license1);
+            System.out.println(license1 + ": " + startDates);
+        }
+
     }
-    
+
     public boolean licenceIsRegisteredForDate(String license) {
         return licenceIsRegisteredForDate(license, LocalDate.now());
     }
@@ -136,38 +140,24 @@ public class VisitorParking {
         return result;
     }
     public ArrayList<LocalDate> getStartDaysLicenceIsRegistered(String license) {
-        ArrayList<LocalDate> days = new ArrayList<LocalDate>();
+        ArrayList<LocalDate> startDates = new ArrayList<LocalDate>();
+
         String standardizedLicense = Parking.standardizeAndValidateLicence(license);
-        TreeSet<LocalDate> dates = this.parkingRecord.get(standardizedLicense);
-        if (dates == null) {
-            return days;
-        }
-        LocalDate currentDate = LocalDate.now();
-        for (LocalDate date : dates) {
-            boolean isStartingDate = true;
-            for (LocalDate previousDate : dates.headSet(date)) {
-                if (previousDate.plusDays(1).equals(date)) {
-                    isStartingDate = false;
-                    break;
+        TreeSet<LocalDate> reservationStartDates = this.startDays.get(standardizedLicense);
+
+        if (reservationStartDates != null) {
+            startDates.addAll(reservationStartDates);
+
+            // Sort startDates by their absolute difference from the current date
+            LocalDate currentDate = LocalDate.now();
+            Collections.sort(startDates, new Comparator<LocalDate>() {
+                public int compare(LocalDate d1, LocalDate d2) {
+                    return Math.abs((int) ChronoUnit.DAYS.between(d1, currentDate))
+                            - Math.abs((int) ChronoUnit.DAYS.between(d2, currentDate));
                 }
-            }
-            if (isStartingDate) {
-                days.add(date);
-            }
+            });
         }
 
-        Collections.sort(days, new Comparator<LocalDate>() {
-            public int compare(LocalDate d1, LocalDate d2) {
-                return Math.abs((int) ChronoUnit.DAYS.between(d1, currentDate))
-                        - Math.abs((int) ChronoUnit.DAYS.between(d2, currentDate));
-            }
-        });
-        System.out.println(days);
-        return dates.stream()
-                .filter(date -> dates.headSet(date).stream()
-                        .noneMatch(previousDate -> previousDate.plusDays(1).equals(date)))
-                .sorted(Comparator.comparingInt(date -> Math.abs((int) ChronoUnit.DAYS.between(date, LocalDate.now()))))
-                .collect(Collectors.toCollection(ArrayList::new));
-
+        return startDates;
     }
 }
