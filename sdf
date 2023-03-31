@@ -8,7 +8,7 @@ public class VisitorParking {
 
     private HashMap<String, TreeSet<LocalDate>> parkingRecord;
     private HashMap<LocalDate, Integer> reservationCountPerDate = new HashMap<>();
-    private HashMap<String, TreeSet<LocalDate>> startDays = new HashMap<>();
+    private HashMap<String, TreeSet<LocalDate>> completeDates = new HashMap<>();
 
 
     public VisitorParking() {
@@ -37,6 +37,7 @@ public class VisitorParking {
             throw e;
         }
     }
+    
     public void addVisitorReservation(String license, LocalDate date) throws IllegalArgumentException {
         String standardizedLicense = Parking.standardizeAndValidateLicence(license);
         if (date.isBefore(LocalDate.now())) {
@@ -49,8 +50,8 @@ public class VisitorParking {
         }
 
         // Check if the license plate is already in the parkingRecord
-        if (parkingRecord.containsKey(standardizedLicense)) {
-            TreeSet<LocalDate> reservationDates = parkingRecord.get(standardizedLicense);
+        if (completeDates.containsKey(standardizedLicense)) {
+            TreeSet<LocalDate> reservationDates = completeDates.get(standardizedLicense);
 
             // Check the reservation count within a 3-day window
             int reservationCount = 0;
@@ -74,7 +75,7 @@ public class VisitorParking {
             reservationDates.add(date);
             reservationDates.add(date.plusDays(1));
             reservationDates.add(date.plusDays(2));
-            parkingRecord.put(standardizedLicense, reservationDates);
+            completeDates.put(standardizedLicense, reservationDates);
         }
 
         // Update the reservation count for each date in the reservation window
@@ -84,14 +85,8 @@ public class VisitorParking {
         }
 
         // Update the startDays HashMap
-        startDays.putIfAbsent(standardizedLicense, new TreeSet<>());
-        startDays.get(standardizedLicense).add(date);
-        System.out.println("Start Days:"); 
-        for (String license1 : this.startDays.keySet()) {
-            TreeSet<LocalDate> startDates = this.startDays.get(license1);
-            System.out.println(license1 + ": " + startDates);
-        }
-
+        parkingRecord.putIfAbsent(standardizedLicense, new TreeSet<>());
+        parkingRecord.get(standardizedLicense).add(date);
     }
 
     public boolean licenceIsRegisteredForDate(String license) {
@@ -100,7 +95,7 @@ public class VisitorParking {
 
     public boolean licenceIsRegisteredForDate(String license, LocalDate date) {
         String standardizedLicense = Parking.standardizeAndValidateLicence(license);
-        TreeSet<LocalDate> dates = this.parkingRecord.get(standardizedLicense);
+        TreeSet<LocalDate> dates = this.completeDates.get(standardizedLicense);
         if (dates == null) {
             return false;
         }
@@ -109,8 +104,8 @@ public class VisitorParking {
     public ArrayList<String> getLicencesRegisteredForDate() {
         LocalDate today = LocalDate.now();
         ArrayList<String> result = new ArrayList<>();
-        for (String license : this.parkingRecord.keySet()) {
-            TreeSet<LocalDate> dates = this.parkingRecord.get(license);
+        for (String license : this.completeDates.keySet()) {
+            TreeSet<LocalDate> dates = this.completeDates.get(license);
             if (dates.contains(today)) {
                 result.add(license);
             }
@@ -119,8 +114,8 @@ public class VisitorParking {
     }
     public ArrayList<String> getLicencesRegisteredForDate(LocalDate date) {
         ArrayList<String> licences = new ArrayList<String>();
-        for (String license : this.parkingRecord.keySet()) {
-            TreeSet<LocalDate> dates = this.parkingRecord.get(license);
+        for (String license : this.completeDates.keySet()) {
+            TreeSet<LocalDate> dates = this.completeDates.get(license);
             if (dates.contains(date)) {
                 licences.add(license);
             }
@@ -129,7 +124,7 @@ public class VisitorParking {
     }
     public ArrayList<LocalDate> getAllDaysLicenceIsRegistered(String license) {
         String standardizedLicense = Parking.standardizeAndValidateLicence(license);
-        TreeSet<LocalDate> dates = this.parkingRecord.get(standardizedLicense);
+        TreeSet<LocalDate> dates = this.completeDates.get(standardizedLicense);
         if (dates == null) {
             return new ArrayList<LocalDate>();
         }
@@ -143,7 +138,7 @@ public class VisitorParking {
         ArrayList<LocalDate> startDates = new ArrayList<LocalDate>();
 
         String standardizedLicense = Parking.standardizeAndValidateLicence(license);
-        TreeSet<LocalDate> reservationStartDates = this.startDays.get(standardizedLicense);
+        TreeSet<LocalDate> reservationStartDates = this.parkingRecord.get(standardizedLicense);
 
         if (reservationStartDates != null) {
             startDates.addAll(reservationStartDates);
